@@ -9,5 +9,5 @@ Automated, hardened Arch Linux ARM64 installer optimized for UTM on Apple Silico
 3. Run:
 
 ```bash
-curl -s https://raw.githubusercontent.com/sakchham14/arch-m4-ultimate/main/arch-m4-ultimate.sh | bash
+curl -L -O https://raw.githubusercontent.com/sakchham14/arch-m4-ultimate/main/arch-ultimate.sh| bash
 
