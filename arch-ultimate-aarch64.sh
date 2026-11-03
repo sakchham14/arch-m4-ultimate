@@ -6,7 +6,7 @@ set -uo pipefail
 # --- 1️⃣ Dependency Check ---
 if ! command -v pacstrap &> /dev/null; then
     echo "Syncing tools..."
-    pacman -Sy --noconfirm gptfdisk arch-install-scripts btrfs-progs cryptsetup
+    pacman -Sy --noconfirm gptfdisk arch-install-scripts btrfs-progs cryptsetup lvm2
 fi
 
 # --- 2️⃣ Configuration ---
@@ -18,10 +18,18 @@ read -p "Username: " USERNAME
 read -s -p "User Password: " USER_PASS; echo
 read -s -p "Root Password: " ROOT_PASS; echo
 
-echo "--- Partition Type ---"
-echo "1) GPT (UEFI, recommended)"
-echo "2) MBR (BIOS/legacy)"
-read -p "Select [1-2]: " PART_TYPE
+echo "--- Partitioning Mode ---"
+echo "1) Auto (recommended: EFI + Btrfs root with subvolumes)"
+echo "2) Auto + LVM (EFI + LVM PV with logical volumes)"
+echo "3) Manual (you partition; provide device paths)"
+read -p "Select [1-3]: " PART_MODE
+
+if [[ "$PART_MODE" == "1" ]]; then
+    echo "--- Partition Type ---"
+    echo "1) GPT (UEFI, recommended)"
+    echo "2) MBR (BIOS/legacy)"
+    read -p "Select [1-2]: " PART_TYPE
+fi
 
 echo "--- Encryption ---"
 echo "1) None"
@@ -43,26 +51,54 @@ echo "5) Desktop (XFCE)"
 echo "6) Window Manager (Hyprland)"
 echo "7) Window Manager (Sway)"
 echo "8) Window Manager (i3)"
-read -p "Select profile [1-8]: " PROFILE
+echo "9) Laptop (power management + brightness)"
+echo "10) Development (docker, podman, neovim, base-devel)"
+echo "11) Gaming (steam, wine, gamemode, lutris)"
+read -p "Select profile [1-11]: " PROFILE
 
 # --- 3️⃣ Partitioning ---
-echo "Partitioning $DISK..."
-sgdisk --zap-all "$DISK" 2>/dev/null || true
-if [[ "$PART_TYPE" == "1" ]]; then
-    sgdisk -n 1:0:+1G -t 1:ef00 -c 1:"EFI" "$DISK"
-    sgdisk -n 2:0:0    -t 2:8300 -c 2:"ROOT" "$DISK"
+if [[ "$PART_MODE" == "3" ]]; then
+    echo "Manual mode. Partition your disk now (cfdisk/fdisk), then enter device paths."
+    read -p "EFI/boot partition (e.g. /dev/sda1): " BOOT
+    read -p "Root partition (e.g. /dev/sda2): " ROOT_PART
+    read -p "Is root partition encrypted? [y/N]: " ENC_ROOT
+    [[ "$ENC_ROOT" =~ ^[Yy]$ ]] && ENCRYPT="2"
+elif [[ "$PART_MODE" == "2" ]]; then
+    # LVM auto
+    echo "Partitioning $DISK (LVM)..."
+    sgdisk --zap-all "$DISK" 2>/dev/null || true
+    sgdisk -n 1:0:+512M -t 1:ef00 -c 1:"EFI" "$DISK"
+    sgdisk -n 2:0:0     -t 2:8e00 -c 2:"LVM" "$DISK"
+    if [[ "$DISK" == *[0-9] ]]; then
+        BOOT="${DISK}p1"; LVM_PART="${DISK}p2"
+    else
+        BOOT="${DISK}1"; LVM_PART="${DISK}2"
+    fi
+    pvcreate "$LVM_PART"
+    vgcreate vg0 "$LVM_PART"
+    lvcreate -L 30G -n root vg0
+    lvcreate -l 100%FREE -n home vg0
+    ROOT_PART="/dev/vg0/root"
+    HOME_PART="/dev/vg0/home"
 else
-    sfdisk "$DISK" <<EOF
+    echo "Partitioning $DISK..."
+    sgdisk --zap-all "$DISK" 2>/dev/null || true
+    if [[ "$PART_TYPE" == "1" ]]; then
+        sgdisk -n 1:0:+512M -t 1:ef00 -c 1:"EFI" "$DISK"
+        sgdisk -n 2:0:0     -t 2:8300 -c 2:"ROOT" "$DISK"
+    else
+        sfdisk "$DISK" <<EOF
 label: dos
-,1G,ef
+,512M,ef
 ,,83
 EOF
-fi
+    fi
 
-if [[ "$DISK" == *[0-9] ]]; then
-    BOOT="${DISK}p1"; ROOT_PART="${DISK}p2"
-else
-    BOOT="${DISK}1"; ROOT_PART="${DISK}2"
+    if [[ "$DISK" == *[0-9] ]]; then
+        BOOT="${DISK}p1"; ROOT_PART="${DISK}p2"
+    else
+        BOOT="${DISK}1"; ROOT_PART="${DISK}2"
+    fi
 fi
 
 # --- 4️⃣ Encryption (optional) ---
@@ -75,7 +111,30 @@ fi
 
 # --- 5️⃣ Formatting & Subvolumes ---
 mkfs.vfat -F32 "$BOOT"
-mkfs.btrfs -f "$ROOT_PART"
+if [[ "$PART_MODE" == "2" ]]; then
+    mkfs.btrfs -f "$ROOT_PART"
+    mkfs.btrfs -f "$HOME_PART"
+    mount "$ROOT_PART" /mnt
+    btrfs subvolume create /mnt/@ 2>/dev/null || true
+    btrfs subvolume create /mnt/@snapshots 2>/dev/null || true
+    umount /mnt
+    mount -o "noatime,compress=zstd:3,ssd,space_cache=v2,subvol=@" "$ROOT_PART" /mnt
+    mkdir -p /mnt/home
+    mount "$HOME_PART" /mnt/home
+else
+    mkfs.btrfs -f "$ROOT_PART"
+    mount "$ROOT_PART" /mnt
+    btrfs subvolume create /mnt/@
+    btrfs subvolume create /mnt/@home
+    btrfs subvolume create /mnt/@snapshots
+    umount /mnt
+    OPTS="noatime,compress=zstd:3,ssd,space_cache=v2,subvol="
+    mount -o "${OPTS}@" "$ROOT_PART" /mnt
+    mkdir -p /mnt/{boot,home,.snapshots}
+    mount -o "${OPTS}@home" "$ROOT_PART" /mnt/home
+    mount -o "${OPTS}@snapshots" "$ROOT_PART" /mnt/.snapshots
+fi
+mount "$BOOT" /mnt/boot
 
 mount "$ROOT_PART" /mnt
 btrfs subvolume create /mnt/@
@@ -137,6 +196,12 @@ echo "root:$ROOT_PASS" | chpasswd
 useradd -m -G wheel -s /bin/bash $USERNAME
 echo "$USERNAME:$USER_PASS" | chpasswd
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+
+# LVM initramfs hook
+if [[ "$PART_MODE" == "2" ]]; then
+    sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf block lvm2 filesystems keyboard fsck)/' /etc/mkinitcpio.conf
+    mkinitcpio -P
+fi
 
 # Bootloader
 if [[ "$PART_TYPE" == "1" ]]; then

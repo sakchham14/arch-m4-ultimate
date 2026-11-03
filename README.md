@@ -18,15 +18,28 @@ The script auto-detects your architecture (`uname -m`) and pulls the correct ins
 
 - **Auto architecture detection** — aarch64 or x86_64
 - **Bare metal or VM** — prompts for hypervisor to install the right guest tools
+- **Partitioning modes** — Auto (Btrfs), Auto + LVM, or Manual
+- **LUKS2 encryption** — optional full-disk encryption
+- **GPT or MBR** — UEFI or legacy BIOS
 - **Btrfs** with zstd compression and subvolumes (`@`, `@home`, `@snapshots`)
 - **Snapper** pre-configured for instant system rollbacks
 - **UEFI + GRUB** with `--removable` flag for VM compatibility
+- **Auto driver detection** — GPU (NVIDIA/AMD/Intel), CPU microcode, audio
+- **Install profiles** — 11 presets from minimal to gaming
 
-## Partition Scheme
+## Partitioning Modes
+
+| Mode | Description |
+|---|---|
+| Auto | EFI + single Btrfs root with subvolumes (recommended) |
+| Auto + LVM | EFI + LVM PV with separate root/home logical volumes |
+| Manual | You partition; provide device paths |
+
+## Partition Scheme (Auto)
 
 | Mount Point | Subvolume | Size | Notes |
 |---|---|---|---|
-| `/boot` | — | 1GB | FAT32 EFI partition |
+| `/boot` | — | 512MB | FAT32 EFI partition |
 | `/` | `@` | Rest | Btrfs root |
 | `/home` | `@home` | Shared | Shared Btrfs space |
 | `/.snapshots` | `@snapshots` | Shared | For Snapper rollbacks |
@@ -39,6 +52,29 @@ The script auto-detects your architecture (`uname -m`) and pulls the correct ins
 | VMware Fusion/Workstation | `open-vm-tools` | `vmtoolsd`, `vmware-vmblock-fuse` |
 | VirtualBox | `virtualbox-guest-utils` | `vboxservice` |
 | Bare metal / other | none | — |
+
+## Install Profiles
+
+| # | Profile | Packages |
+|---|---|---|
+| 1 | Minimal | base only |
+| 2 | Server | openssh, htop, tmux |
+| 3 | Desktop (GNOME) | gnome, gdm |
+| 4 | Desktop (KDE Plasma) | plasma, sddm |
+| 5 | Desktop (XFCE) | xfce4, lightdm |
+| 6 | WM (Hyprland) | hyprland, waybar, wofi, kitty |
+| 7 | WM (Sway) | sway, waybar, wofi, foot |
+| 8 | WM (i3) | i3-wm, i3status, i3lock, dmenu |
+| 9 | Laptop | power-profiles-daemon, brightnessctl |
+| 10 | Development | docker, podman, neovim, base-devel |
+| 11 | Gaming | steam, wine, gamemode, lutris |
+
+## Auto-Detected Drivers
+
+- **GPU:** NVIDIA, AMD (mesa + xf86-video-amdgpu), Intel (mesa + intel-media-driver)
+- **CPU microcode:** intel-ucode or amd-ucode
+- **Audio:** pipewire, pipewire-pulse, wireplumber
+- **Network:** networkmanager
 
 ## UTM Configuration (Apple Silicon)
 
