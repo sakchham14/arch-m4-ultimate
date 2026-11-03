@@ -55,19 +55,22 @@ The script auto-detects your architecture (`uname -m`) and pulls the correct ins
 
 ## Install Profiles
 
-| # | Profile | Packages |
-|---|---|---|
-| 1 | Minimal | base only |
-| 2 | Server | openssh, htop, tmux |
-| 3 | Desktop (GNOME) | gnome, gdm |
-| 4 | Desktop (KDE Plasma) | plasma, sddm |
-| 5 | Desktop (XFCE) | xfce4, lightdm |
-| 6 | WM (Hyprland) | hyprland, waybar, wofi, kitty |
-| 7 | WM (Sway) | sway, waybar, wofi, foot |
-| 8 | WM (i3) | i3-wm, i3status, i3lock, dmenu |
-| 9 | Laptop | power-profiles-daemon, brightnessctl |
-| 10 | Development | docker, podman, neovim, base-devel |
-| 11 | Gaming | steam, wine, gamemode, lutris |
+- **Minimal**
+  - 1. Minimal — base only
+- **Server**
+  - 2. Server — openssh, htop, tmux
+- **Desktop Environments**
+  - 3. GNOME — gnome, gdm
+  - 4. KDE Plasma — plasma, sddm
+  - 5. XFCE — xfce4, lightdm
+- **Window Managers**
+  - 6. Hyprland — hyprland, waybar, wofi, kitty
+  - 7. Sway — sway, waybar, wofi, foot
+  - 8. i3 — i3-wm, i3status, i3lock, dmenu
+- **Use-case**
+  - 9. Laptop — power-profiles-daemon, brightnessctl
+  - 10. Development — docker, podman, neovim, base-devel
+  - 11. Gaming — steam, wine, gamemode, lutris
 
 ## Auto-Detected Drivers
 
