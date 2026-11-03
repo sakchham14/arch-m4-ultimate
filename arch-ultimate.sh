@@ -12,11 +12,16 @@ fi
 # --- 2️⃣ Configuration ---
 echo "--- Arch Linux M4 Setup ---"
 lsblk -d -o NAME,SIZE,MODEL
-read -p "Target Disk (e.g. /dev/vda): " DISK
+read -p "Target Disk (e.g. /dev/vda, /dev/sda, /dev/nvme0n1): " DISK
 read -p "Hostname: " HOSTNAME
 read -p "Username: " USERNAME
 read -s -p "User Password: " USER_PASS; echo
 read -s -p "Root Password: " ROOT_PASS; echo
+echo "--- Hypervisor ---"
+echo "1) UTM / QEMU (Apple Virtualization)"
+echo "2) VMware Fusion"
+echo "3) Other (Parallels, VirtualBox, etc.)"
+read -p "Select hypervisor [1-3]: " HYPERVISOR
 
 # --- 3️⃣ Partitioning (Improved Logic) ---
 echo "Partitioning $DISK..."
@@ -53,7 +58,27 @@ mount -o "${OPTS}@snapshots" "$ROOT_PART" /mnt/.snapshots
 mount "$BOOT" /mnt/boot
 
 # --- 5️⃣ Install Base ---
-pacstrap /mnt base linux linux-firmware btrfs-progs snapper vim sudo bash qemu-guest-agent git
+# Base packages common to all hypervisors
+BASE_PKGS="base linux linux-firmware btrfs-progs snapper vim sudo bash git"
+
+# Hypervisor-specific guest integration
+case "$HYPERVISOR" in
+    1) # UTM / QEMU (Apple Virtualization)
+        GUEST_PKGS="qemu-guest-agent"
+        ;;
+    2) # VMware Fusion
+        GUEST_PKGS="open-vm-tools"
+        ;;
+    3) # Other (Parallels, VirtualBox, etc.)
+        GUEST_PKGS=""
+        ;;
+    *)
+        echo "Invalid hypervisor selection, defaulting to QEMU/UTM guest agent."
+        GUEST_PKGS="qemu-guest-agent"
+        ;;
+esac
+
+pacstrap /mnt $BASE_PKGS $GUEST_PKGS
 
 genfstab -U /mnt >> /mnt/etc/fstab
 
@@ -80,6 +105,16 @@ grub-mkconfig -o /boot/grub/grub.cfg
 snapper -c root create-config /
 rm -rf /.snapshots
 mkdir /.snapshots
+
+# Enable hypervisor-specific guest services
+case "$HYPERVISOR" in
+    1)
+        systemctl enable qemu-guest-agent.service
+        ;;
+    2)
+        systemctl enable vmtoolsd.service vmware-vmblock-fuse.service
+        ;;
+esac
 EOF
 
 # --- 7️⃣ Finalize ---

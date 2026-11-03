@@ -1,6 +1,6 @@
 # Arch Linux M4 (Apple Silicon) UTM Installer
 
-An automated, "no-hassle" Arch Linux ARM64 installer designed specifically for **M4-series Macs** running **UTM**. It uses a modern **Btrfs** layout with subvolumes and snapshot support.
+An automated, "no-hassle" Arch Linux ARM64 installer designed for **M4-series Macs** running **UTM**, **VMware Fusion**, or other ARM64 virtualization. It uses a modern **Btrfs** layout with subvolumes and snapshot support.
 
 ## 🚀 One-Command Install
 
