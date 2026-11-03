@@ -1,40 +1,49 @@
-# Arch Linux M4 (Apple Silicon) UTM Installer
+# Arch Linux Universal Installer
 
-An automated, "no-hassle" Arch Linux ARM64 installer designed for **M4-series Macs** running **UTM**, **VMware Fusion**, or other ARM64 virtualization. It uses a modern **Btrfs** layout with subvolumes and snapshot support.
+Automated, "no-hassle" Arch Linux installer for **ARM64 (aarch64)** and **x86_64** systems — bare metal or virtualized (UTM, VMware, VirtualBox, QEMU/KVM, Parallels). Uses a modern **Btrfs** layout with subvolumes and snapshot support.
 
-## 🚀 One-Command Install
+## One-Command Install
 
-Once you have booted into the **Archboot** or **Arch ARM64 ISO**, run this command to start the installation:
+Boot into an Arch Linux ISO (matching your architecture), then run:
 
 ```bash
 pacman -Sy --noconfirm arch-install-scripts gptfdisk && \
-curl -L -O [https://raw.githubusercontent.com/sakchham14/arch-m4-ultimate/main/arch-ultimate.sh](https://raw.githubusercontent.com/sakchham14/arch-m4-ultimate/main/arch-ultimate.sh) && \
-chmod +x arch-ultimate.sh && \
-./arch-ultimate.sh
-✨ Key Features
-Modern Filesystem: Uses Btrfs with zstd compression (optimized for M4 SSD performance).
+curl -L -O https://raw.githubusercontent.com/sakchham14/arch-m4-ultimate/main/arch-ultimate.sh && \
+chmod +x arch-ultimate.sh && ./arch-ultimate.sh
+```
 
-Subvolume Layout: shares space dynamically between Root and Home.
+The script auto-detects your architecture (`uname -m`) and pulls the correct installer.
 
-System Recovery: Pre-configured with Snapper for instant system rollbacks.
+## Features
 
-UTM Persistence: Uses the --removable GRUB flag to ensure the VM always finds the bootloader.
+- **Auto architecture detection** — aarch64 or x86_64
+- **Bare metal or VM** — prompts for hypervisor to install the right guest tools
+- **Btrfs** with zstd compression and subvolumes (`@`, `@home`, `@snapshots`)
+- **Snapper** pre-configured for instant system rollbacks
+- **UEFI + GRUB** with `--removable` flag for VM compatibility
 
-Apple Silicon Optimized: Specifically configured for aarch64 architecture.
+## Partition Scheme
 
-📂 Partition & Subvolume Scheme
-Mount Point	Subvolume	Size	Notes
-/boot	N/A	1GB	FAT32 EFI Partition
-/	@	Rest	Btrfs root
-/home	@home	Shared	Shared Btrfs space
-/.snapshots	@snapshots	Shared	For Snapper rollbacks
-🛠 UTM Configuration (M4)
-For maximum performance, ensure your UTM VM settings are:
+| Mount Point | Subvolume | Size | Notes |
+|---|---|---|---|
+| `/boot` | — | 1GB | FAT32 EFI partition |
+| `/` | `@` | Rest | Btrfs root |
+| `/home` | `@home` | Shared | Shared Btrfs space |
+| `/.snapshots` | `@snapshots` | Shared | For Snapper rollbacks |
 
-System: Apple Virtualization (Virtualization, not Emulation).
+## Hypervisor Support
 
-Architecture: ARM64 (aarch64).
+| Option | Guest package | Service enabled |
+|---|---|---|
+| UTM / QEMU | `qemu-guest-agent` | `qemu-guest-agent.service` |
+| VMware Fusion/Workstation | `open-vm-tools` | `vmtoolsd`, `vmware-vmblock-fuse` |
+| VirtualBox | `virtualbox-guest-utils` | `vboxservice` |
+| Bare metal / other | none | — |
 
-Display: virtio-ramfb-gl (Apple) (Required for GPU acceleration later).
+## UTM Configuration (Apple Silicon)
 
-Drive: VirtIO interface for the main disk.
+For best performance on M4 Macs:
+- **System:** Apple Virtualization (not Emulation)
+- **Architecture:** ARM64 (aarch64)
+- **Display:** virtio-ramfb-gl (Apple)
+- **Drive:** VirtIO interface
